@@ -7,6 +7,18 @@ import { api } from '@/lib/api';
 import { Search, MessageSquare, Calendar, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistance } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Conversation {
   id: string;
@@ -20,7 +32,11 @@ export default function History() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [conversationToDeleteId, setConversationToDeleteId] = useState<string | null>(null);
+
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     loadHistory();
@@ -75,22 +91,36 @@ export default function History() {
     return groups;
   };
 
-  const handleDeleteConversation = async (conversationId: string) => {
-    if (window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
-      setLoading(true); // Indicate loading while deleting
-      const { error } = await api.deleteConversation(conversationId);
-      setLoading(false);
-
-      if (!error) {
-        setConversations(prevConversations => prevConversations.filter(conv => conv.id !== conversationId));
-      } else {
-        // Handle error, maybe display a toast
-        console.error('Failed to delete conversation:', error);
-        alert(`Failed to delete conversation: ${error}`); // Simple alert for now
-      }
-    }
+  const handleDeleteConversation = (conversationId: string) => {
+    setConversationToDeleteId(conversationId);
+    setIsConfirmDialogOpen(true);
   };
 
+  const confirmDelete = async () => {
+    if (!conversationToDeleteId) return;
+
+    setLoading(true);
+    const { error } = await api.deleteConversation(conversationToDeleteId);
+    setLoading(false);
+    setIsConfirmDialogOpen(false); // Close dialog
+
+    if (!error) {
+      setConversations(prevConversations => prevConversations.filter(conv => conv.id !== conversationToDeleteId));
+      toast({
+        title: "Conversation Deleted",
+        description: "The conversation has been successfully removed.",
+      });
+    } else {
+      console.error('Failed to delete conversation:', error);
+      toast({
+        title: "Deletion Failed",
+        description: `Failed to delete conversation: ${error}`,
+        variant: "destructive",
+      });
+    }
+    setConversationToDeleteId(null); // Reset ID
+  };
+  
   const groupedConversations = groupConversationsByDate();
 
   return (
@@ -174,18 +204,20 @@ export default function History() {
                                   {conv.lastMessage}
                                 </CardDescription>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.preventDefault(); // Prevent card onClick from firing
-                                  e.stopPropagation(); // Stop event bubbling to parent elements
-                                  handleDeleteConversation(conv.id);
-                                }}
-                                className="flex-shrink-0 ml-2"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.preventDefault(); // Prevent card onClick from firing
+                                    e.stopPropagation(); // Stop event bubbling to parent elements
+                                    handleDeleteConversation(conv.id);
+                                  }}
+                                  className="flex-shrink-0 ml-2"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
                             </div>
                           </CardHeader>
                           <CardContent>
@@ -205,6 +237,22 @@ export default function History() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your conversation
+              and remove its data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConversationToDeleteId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
