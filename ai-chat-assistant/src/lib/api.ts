@@ -91,6 +91,12 @@ class ApiClient {
     return this.request<{ messages: any[] }>(`/api/chat/history/${id}`);
   }
 
+  async deleteConversation(id: string) {
+    return this.request(`/api/chat/history/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async searchConversations(query: string) {
     return this.request<{ conversations: any[] }>(
       `/api/chat/history/search?q=${encodeURIComponent(query)}`

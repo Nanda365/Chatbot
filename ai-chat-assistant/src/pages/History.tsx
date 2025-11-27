@@ -75,6 +75,22 @@ export default function History() {
     return groups;
   };
 
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      setLoading(true); // Indicate loading while deleting
+      const { error } = await api.deleteConversation(conversationId);
+      setLoading(false);
+
+      if (!error) {
+        setConversations(prevConversations => prevConversations.filter(conv => conv.id !== conversationId));
+      } else {
+        // Handle error, maybe display a toast
+        console.error('Failed to delete conversation:', error);
+        alert(`Failed to delete conversation: ${error}`); // Simple alert for now
+      }
+    }
+  };
+
   const groupedConversations = groupConversationsByDate();
 
   return (
@@ -104,22 +120,29 @@ export default function History() {
             </div>
           </div>
 
-          {loading ? (
+          {loading && conversations.length === 0 ? ( // Only show full screen loader if no conversations yet
             <div className="flex justify-center py-12">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
+          ) : conversations.length === 0 && searchQuery ? (
+             <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground text-center">
+                  No conversations found matching "{searchQuery}"
+                </p>
+              </CardContent>
+            </Card>
           ) : conversations.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground text-center">
-                  {searchQuery ? 'No conversations found' : 'No chat history yet'}
+                  No chat history yet
                 </p>
-                {!searchQuery && (
-                  <Button className="mt-4" onClick={() => navigate('/')}>
-                    Start a conversation
-                  </Button>
-                )}
+                <Button className="mt-4" onClick={() => navigate('/')}>
+                  Start a conversation
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -135,12 +158,17 @@ export default function History() {
                       {convs.map((conv) => (
                         <Card
                           key={conv.id}
-                          className="hover:shadow-medium transition-shadow cursor-pointer"
-                          onClick={() => navigate(`/chat/${conv.id}`)}
+                          className="hover:shadow-medium transition-shadow"
+                          // Only navigate if not interacting with delete button
+                          onClick={(e) => {
+                            if (!e.defaultPrevented) { // Check if default was prevented by a child click handler
+                              navigate(`/chat/${conv.id}`);
+                            }
+                          }}
                         >
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
-                              <div className="flex-1">
+                              <div className="flex-1 cursor-pointer" onClick={() => navigate(`/chat/${conv.id}`)}>
                                 <CardTitle className="text-lg">{conv.title}</CardTitle>
                                 <CardDescription className="mt-1">
                                   {conv.lastMessage}
@@ -150,8 +178,9 @@ export default function History() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Handle delete
+                                  e.preventDefault(); // Prevent card onClick from firing
+                                  e.stopPropagation(); // Stop event bubbling to parent elements
+                                  handleDeleteConversation(conv.id);
                                 }}
                                 className="flex-shrink-0 ml-2"
                               >

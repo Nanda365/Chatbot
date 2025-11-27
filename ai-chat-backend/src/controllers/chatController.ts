@@ -350,3 +350,32 @@ export const getConversationMessages = async (req: AuthenticatedRequest, res: Re
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const deleteConversation = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params; // conversationId
+  const userId = req.user?._id;
+
+  if (!userId) {
+    return res.status(401).json({ message: 'User not authenticated' });
+  }
+
+  if (!Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid conversation ID' });
+  }
+
+  try {
+    const deletedConversation = await Conversation.findOneAndDelete({ _id: id, userId });
+
+    if (!deletedConversation) {
+      return res.status(404).json({ message: 'Conversation not found or not authorized' });
+    }
+
+    // Optionally, delete all messages associated with this conversation
+    await Message.deleteMany({ conversationId: id });
+
+    res.status(200).json({ message: 'Conversation and associated messages deleted successfully' });
+  } catch (error) {
+    console.error(`Error deleting conversation ${id}:`, error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
