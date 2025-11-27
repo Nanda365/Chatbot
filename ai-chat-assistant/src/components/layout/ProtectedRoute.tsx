@@ -20,20 +20,15 @@ export function ProtectedRoute({ children, adminOnly }: ProtectedRouteProps) {
     );
   }
 
-  // Only enforce authentication for admin-only routes
-  if (adminOnly) {
-    if (!user) {
-      // If no user, redirect to login
-      return <Navigate to="/auth/login" replace />;
-    }
-    if (!isAdmin) {
-      // If user is not an admin, redirect to home
-      return <Navigate to="/" replace />;
-    }
+  // For any protected route, if no user, redirect to login
+  if (!user) {
+    return <Navigate to="/auth/login" replace />;
   }
 
-  // For non-adminOnly protected routes (History, Settings),
-  // authentication is optional. We allow access and the
-  // component itself can decide what to show.
+  // For admin-only routes, check if user is admin
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/" replace />; // Redirect non-admins from admin routes
+  }
+
   return <>{children}</>;
 }
