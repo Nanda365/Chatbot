@@ -157,7 +157,7 @@ export default function History() {
                     <div className="space-y-3">
                       {convs.map((conv) => (
                         <Card
-                          key={conv.id}
+                          key={conv.id || `temp-key-${Math.random()}`} // Fallback for key
                           className="hover:shadow-medium transition-shadow"
                           // Only navigate if not interacting with delete button
                           onClick={(e) => {
