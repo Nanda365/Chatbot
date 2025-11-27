@@ -204,20 +204,18 @@ export default function History() {
                                   {conv.lastMessage}
                                 </CardDescription>
                               </div>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.preventDefault(); // Prevent card onClick from firing
-                                    e.stopPropagation(); // Stop event bubbling to parent elements
-                                    handleDeleteConversation(conv.id);
-                                  }}
-                                  className="flex-shrink-0 ml-2"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.preventDefault(); // Prevent card onClick from firing
+                                  e.stopPropagation(); // Stop event bubbling to parent elements
+                                  handleDeleteConversation(conv.id);
+                                }}
+                                className="flex-shrink-0 ml-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </CardHeader>
                           <CardContent>
