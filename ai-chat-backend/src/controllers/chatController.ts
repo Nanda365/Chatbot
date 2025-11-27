@@ -298,6 +298,20 @@ User Query: ${message}
   }
 };
 
+// Helper function to format conversation for frontend
+async function formatConversationForFrontend(conv: any, userId: Types.ObjectId) {
+  const lastMessageDoc = await Message.findOne({ conversationId: conv._id }).sort({ createdAt: -1 });
+  const messageCount = await Message.countDocuments({ conversationId: conv._id });
+
+  return {
+    id: conv._id.toString(),
+    title: conv.title,
+    lastMessage: lastMessageDoc ? lastMessageDoc.text : 'No messages yet',
+    timestamp: conv.updatedAt.toISOString(), // Use updatedAt for timestamp
+    messageCount: messageCount,
+  };
+}
+
 export const getChatHistory = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?._id;
   const page = parseInt(req.query.page as string) || 1;
@@ -309,15 +323,22 @@ export const getChatHistory = async (req: AuthenticatedRequest, res: Response) =
   }
 
   try {
-    const conversations = await Conversation.find({ userId })
+    const conversationsQuery = Conversation.find({ userId })
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const totalConversations = await Conversation.countDocuments({ userId });
+    const [conversations, totalConversations] = await Promise.all([
+      conversationsQuery.exec(),
+      Conversation.countDocuments({ userId }),
+    ]);
+
+    const formattedConversations = await Promise.all(
+      conversations.map(conv => formatConversationForFrontend(conv, userId))
+    );
 
     res.status(200).json({
-      conversations,
+      conversations: formattedConversations,
       currentPage: page,
       totalPages: Math.ceil(totalConversations / limit),
       totalConversations,
@@ -344,7 +365,15 @@ export const getConversationMessages = async (req: AuthenticatedRequest, res: Re
 
     const messages = await Message.find({ conversationId: id }).sort({ createdAt: 1 });
 
-    res.status(200).json({ conversation, messages });
+    res.status(200).json({
+      conversation: {
+        id: conversation._id.toString(),
+        title: conversation.title,
+        llmModel: conversation.llmModel, // Include llmModel if exists
+        timestamp: conversation.updatedAt.toISOString(),
+      },
+      messages,
+    });
   } catch (error) {
     console.error(`Error fetching messages for conversation ${id}:`, error);
     res.status(500).json({ message: 'Server error' });
