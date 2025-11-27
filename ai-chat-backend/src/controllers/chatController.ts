@@ -370,7 +370,7 @@ export const getConversationMessages = async (req: AuthenticatedRequest, res: Re
         id: conversation._id.toString(),
         title: conversation.title,
         llmModel: conversation.llmModel, // Include llmModel if exists
-        timestamp: conversation.updatedAt.toISOString(),
+        timestamp: conversation.updatedAt ? conversation.updatedAt.toISOString() : new Date().toISOString(),
       },
       messages,
     });
